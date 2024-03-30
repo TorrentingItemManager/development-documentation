@@ -1,0 +1,174 @@
+<h1 id="development-documentation">development-documentation</h1>
+<p>This is the documentation of the tpk item manager, a tool for
+managing packages and other forms of data; written for the development -
+<strong>not</strong> for users. This documentation should not be
+considered correct. The user documentation will be written when tpk is
+considered stable.</p>
+<h1 id="tpkcli">tpkcli</h1>
+<p>tpkcli is the cli tool users is espected to be used for managing
+items. It is an tool to interface with tpkd, which is the daemon
+managing all items and functions of the tpk.</p>
+<h2 id="invoking-tpkcli">invoking tpkcli</h2>
+<p>To invoke tpkcli, run tpkcli or just tpk - an alias for tpkcli. The
+arguments are</p>
+<pre><code>tpk &lt;options&gt; &lt;arguments&gt;
+</code></pre>
+<p>When using the alias of options, they can be nested. For example</p>
+<pre><code>tpk -SI
+</code></pre>
+<p>To sync and the install item. The execution will be in order of the
+option. For example, the above sync and the install the item.</p>
+<pre><code>tpk -IS
+</code></pre>
+<p>Would install and the sync. The argument will be chared for all the
+options.</p>
+<p>The following options are available:</p>
+<table>
+<thead>
+<tr class="header">
+<th>argument</th>
+<th>alias</th>
+<th>argument</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>sync</td>
+<td>-S</td>
+<td>reference name</td>
+<td>sync the local warehouse to reference</td>
+</tr>
+<tr class="even">
+<td>sync-all</td>
+<td>-Sa</td>
+<td>none</td>
+<td>sync the local warehouse to all references</td>
+</tr>
+<tr class="odd">
+<td>install</td>
+<td>-I</td>
+<td>item name</td>
+<td>install an item</td>
+</tr>
+<tr class="even">
+<td>remove</td>
+<td>-R</td>
+<td>item name</td>
+<td>remove an installed item</td>
+</tr>
+<tr class="odd">
+<td>query</td>
+<td>-Q</td>
+<td>item name</td>
+<td>query installed items with grep</td>
+</tr>
+<tr class="even">
+<td>upgrade</td>
+<td>-U</td>
+<td>item name</td>
+<td>Upgrade installed item</td>
+</tr>
+<tr class="odd">
+<td>upgrade-all</td>
+<td>-Ua</td>
+<td>none</td>
+<td>Upgrade all installed items</td>
+</tr>
+<tr class="even">
+<td>dashboard</td>
+<td>-D</td>
+<td>none</td>
+<td>Enter the tpk dashboard</td>
+</tr>
+<tr class="odd">
+<td>reload</td>
+<td>-R</td>
+<td>none</td>
+<td>Reload tpkd and tpkcli with configuration files</td>
+</tr>
+<tr class="even">
+<td>help</td>
+<td>-h</td>
+<td>none</td>
+<td>display help message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="syncsync-all">sync/sync-all</h3>
+<p>tpkd stores all items available for download locally on a database
+called the warehouse. This ensures any lookup will be quick, and if the
+refrence is down, download will still be possible. Sync updates the
+warehouse to an local remote, and sync-all to all of them.</p>
+<h3 id="install">install</h3>
+<p>Installes a item to the stores and creates symbolic links as
+according to the reference configuration.</p>
+<h3 id="remove">remove</h3>
+<p>Removes an items symbolic link. If no symbolic links is left and no
+item depends on it, the item is removed from the store.</p>
+<h3 id="query">query</h3>
+<p>Query the store items with the users access. The argument is runned
+as a grep on the item names.</p>
+<h3 id="upgradeupgrade-all">upgrade/upgrade-all</h3>
+<p>Upgrades the entire store with the local warehouse (make sure to sync
+it).</p>
+<h3 id="dashboard">dashboard</h3>
+<p>Enters a tui-dasboard where information can be found about all
+items.</p>
+<h3 id="help">help</h3>
+<p>prints help information.</p>
+<h1 id="tpkd">tpkd</h1>
+<p>tpkd is the tpk daemon. It handles all the core parts of the item
+managing, and all important operations happens here. It's function
+includes</p>
+<ol>
+<li>torrenting function such as installing and seeding all the
+items.</li>
+<li>managing the store</li>
+<li>managing the warehouse</li>
+<li>installing (setting up) items after download</li>
+</ol>
+<h2 id="torrenting">Torrenting</h2>
+<p>tpkd uses <a href="https://github.com/btpd/btpd">btpd</a> as its
+bittorrent daemon.</p>
+<h2 id="the-store">The store</h2>
+<p><strong>The store should never be interfaced with directly. All
+communication to the store should be made through the tpkd interface to
+ensure nothing breaks.</strong></p>
+<p>The store is where all items is downloaded to. It is located at</p>
+<pre><code>/opt/tpk/store
+</code></pre>
+<p>The store contains directories called items. The folder name is:</p>
+<pre><code>&lt;item name&gt;-&lt;sha256 hashsum&gt;
+</code></pre>
+<p>The item name is derived from the refrence, the hashsum is derived
+from the magnet link to the item. The hashsum ensures security in the
+system, as every store item is unique. The item name is there for
+convinience. Each store item contain a REFERENCE file, containing
+installation data about the item; and a folder called content, which is
+the root directory of the torrent downloaded. The content directory
+should <strong>never</strong> be mutated, as is never mutated by tpkd
+after installation.</p>
+<h3 id="reference-file">REFERENCE file</h3>
+<p>The REFERENCE file stores data about the store item, used for editing
+the item. The data includes the following:</p>
+<ul>
+<li>A list of the symbolic links to the item (and there path)</li>
+<li>Custom data as according to the installation instructions from the
+reference configuration</li>
+</ul>
+<p>The goal of the reference file is to ensure the packakge is managed
+correctly at edit.</p>
+<h2 id="the-warehouse">The warehouse</h2>
+<p>The warehouse is a collection of files holding information about
+available items and how to manage them during installation. The
+warehouse is located at</p>
+<pre><code>/opt/tpk/warehouse
+</code></pre>
+<p>The db contains the MASTER file and the directory sources.</p>
+<p>The sources directory contains a directory for each source. This
+directory contains a config file describing how items frome this source
+should be managed.</p>
+<h1 id="tpkos">tpkos</h1>
+<h1 id="configuration">Configuration</h1>
+<h2 id="refrences">Refrences</h2>
