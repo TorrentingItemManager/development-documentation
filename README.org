@@ -1,0 +1,2 @@
+# development-documentation
+This is the documentation of the tpk package manager, written for the development *not* for users. This documentation should not be considered correct. The user documentation will be written when tpk is considered stable.
