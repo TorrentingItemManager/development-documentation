@@ -113,16 +113,16 @@ Timd expects a JSON formatted string containing the fields "action" and the fiel
 message:
 #+BEGIN_SRC json
 {
-  action: "install",
-  install-package: "neofetch"
+  "action": "install",
+  "install-package": "neofetch"
 }
 #+END_SRC
 
 response:
 #+BEGIN_SRC json
 {
-  success: true,
-  message: "Torrenting of package neofetch has begun."
+  "success": true,
+  "message": "Torrenting of package neofetch has begun."
 }
 #+END_SRC
 
