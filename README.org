@@ -7,15 +7,15 @@ timcli is the CLI tool users is expected to be used for managing items. It is an
 ** invoking timcli
 To invoke timcli, run timcli or just tim - an alias for timcli. The arguments are
 
-#+BEGIN_SRC bash
+#+BEGIN_SRC shell
 tim <options> <arguments>
 #+END_SRC
 When using the alias of options, they can be nested. For example
-#+BEGIN_SRC
+#+BEGIN_SRC shell
 tim -SI
 #+END_SRC
 To sync and the install item. The execution will be in order of the option. For example, the above sync and the install the item. 
-#+BEGIN_SRC
+#+BEGIN_SRC shell
 tim -IS
 #+END_SRC
 Would install and the sync. The argument will be chared for all the options.
