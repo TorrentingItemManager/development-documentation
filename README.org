@@ -2,38 +2,48 @@
 This is the documentation of the tim item manager, a tool for managing packages and other forms of data; written for the development - *not* for users. This documentation should not be considered correct. The user documentation will be written when tim is considered stable.
 
 * timcli
-timcli is the CLI tool users is expected to be used for managing items. It is an tool to interface with timd, which is the daemon managing all items and functions of the tim.
+timcli is the CLI tool users is expected to use for managing items. It is an tool to interface with timd, which is the daemon managing all items and functions of the tim.
 
 ** invoking timcli
-To invoke timcli, run timcli or just tim - an alias for timcli. The arguments are
+To invoke timcli, run timcli or tim. tim is an alias for timcli. Each call shoud look like this:
 
 #+BEGIN_SRC shell
 tim <options> <arguments>
 #+END_SRC
-When using the alias of options, they can be nested. For example
+When using the alias for an option, they can be nested. For example
 #+BEGIN_SRC shell
 tim -SI
 #+END_SRC
-To sync and the install item. The execution will be in order of the option. For example, the above sync and the install the item. 
+To sync and the install item. The execution will be in order of the option. For example, the above sync and the install the item, while
 #+BEGIN_SRC shell
 tim -IS
 #+END_SRC
-Would install and the sync. The argument will be chared for all the options.
+would install and the sync. The argument will be called for all the options.
 
 The following options are available:
 
-| argument     | alias | argument       | description                                           |
+| option       | alias | argument       | description                                           |
 |--------------+-------+----------------+-------------------------------------------------------|
 | sync         | -S    | reference name | sync the local warehouse to reference                 |
-| sync-all     | -Sa   | none           | sync the local warehouse to all references            |
-| install      | -I    | item name      | install an item                                       |
-| remove       | -R    | item name      | remove an installed item                              |
-| query        | -Q    | item name      | query installed items with grep                       |
-| upgrade      | -U    | item name      | Upgrade installed item                                |
+| sync-all     | -s   | none           | sync the local warehouse to all references            |
+| install      | -I    | items name     | install an item                                       |
+| remove       | -R    | items name     | remove an installed item                              |
+| query        | -Q    | items name     | query installed items with grep                       |
+| upgrade      | -U    | items name     | Upgrade installed item                                |
 | upgrade-all  | -Ua   | none           | Upgrade all installed items                           |
 | dashboard    | -D    | none           | Enter the tim dashboard                               |
 | reload       | -R    | none           | Reload timd and timcli with configuration files       |
 | help         | -h    | none           | display help message                                  |
+
+Any time a name is required, one can add multiple space-seperated. For example
+#+BEGIN_SRC
+tim -I neovim emacs
+#+END_SRC
+to install both neovim and emacs. One can specify from which reference to download an item from by writing the reference <name>/<item> name
+#+BEGIN_SRC
+tim -I main_package/neovim gnuRef/emacs
+#+END_SRC
+
 
 *** sync/sync-all
 timd stores all items available for download locally on a database called the warehouse. This ensures any lookup will be quick, and if the reference is down, download will still be possible. Sync updates the warehouse to an local remote, and sync-all to all of them.
@@ -91,13 +101,13 @@ The warehouse is a collection of files holding information about available items
 #+BEGIN_SRC
 /opt/tim/warehouse
 #+END_SRC
-The db contains the MASTER file and the directory sources.
+The db contains the MASTER file and the directory references.
 
-The sources directory contains a directory for each source. The directory name is 
+The reference directory contains a directory for each reference. The directory name is 
 #+BEGIN_SRC
-<source_name>-<iteration>
+<reference_name>-<iteration>
 #+END_SRC
-where iteration is the iteration of the source. This directory contains a config file describing how items from this source should be managed, and a folder instances containing symbolic links to the store-items derived from this source.
+where iteration is the iteration of the reference. This directory contains a config file describing how items from this reference should be managed, and a folder instances containing symbolic links to the store-items derived from this reference.
 
 ** Inter-process communication (IPC)
 Communication with the timd daemon is done through a UNIX domain socket located at
@@ -105,32 +115,251 @@ Communication with the timd daemon is done through a UNIX domain socket located 
 /var/tim/timd.sock
 #+END_SRC
 
-Timd expects a JSON formatted string containing the fields "action" and the fields specific to the action. Timd will always respond with at least two fields:
-- success (boolean) if the action was successfully executed
-- message (string) a human readable message that can be printed out to the end user
+Timd expects a JSON formatted string containing the fields "action" and the fields specific to the action. 
 
-*** Example usage
-message:
+The available actions are:
+- sync
+- install
+- remove
+- query
+- upgrade
+- reload
+
+*** sync
+sync syncs the warehouse to the references.
+
+#+BEGIN_SRC json
+{
+  "action": "sync",
+  "all-references": boolean,	// sync all references true/false
+  "with-reference": [		
+  	string,			// the reference to sync as strings if above is false
+  	...
+  ]
+}
+#+END_SRC
+
+The server will try to connect to each of the references in parallel, and begin downloading the latest iteration of the reference. Meanwhile it will stream the progress to the client. The stream status is indicated with the status value. Status can have three values:
+- downloading, it is downloading the latest version of the reference.
+- download-failed, the download failed.
+- finished, each reference is finsihed and the operation is finished.
+#+BEGIN_SRC json
+{
+	"status": "downloading",
+	"reference": string,	// the reference the data is about
+	"progress": integer,	// the number of bytes downloaded
+	"size": integer		// the total size of the update in bytes 
+}
+#+END_SRC
+or
+#+BEGIN_SRC json
+{
+	"status": "download-failed",
+	"message": string,	// the error message (typically http message)
+	"error-code": integer	// http error code if applicable
+}
+#+END_SRC
+
+#+BEGIN_SRC json
+{
+	"status": "finished",
+	"message": string,	// message about the success or failure
+}
+#+END_SRC
+
+*** install
+install installs one or more items.
+
 #+BEGIN_SRC json
 {
   "action": "install",
-  "install-package": "neofetch"
+  "item": [
+  	{
+		"reference": string,	//optional, the reference from which to install the item
+		"item-name": string	// the name of the item to be installed
+	},
+	...
+  ]
 }
 #+END_SRC
 
-response:
+The server response with a stream of the progress for each item. The status is indicated with the status flag, possible options are:
+- downloading, downloading a package.
+- download-failed, the download failed. 
+- finished, download of all packages are finished.
+
 #+BEGIN_SRC json
 {
-  "success": true,
-  "message": "Torrenting of package neofetch has begun."
+	"status": "downloading",
+	"item": {
+		"reference": string,
+		"item-name": string
+	},
+	"progress": integer,	// the number of bytes downloaded
+	"size": integer		// the total size of the update in bytes, is zero while unknown
+	"seeders": integer	// the number of seeders for the item
 }
 #+END_SRC
 
+#+BEGIN_SRC json
+{
+	"status": "download-failed",
+	"message": string		// message why the download failed
+	"item": {
+		"reference": string,
+		"item-name": string
+	},
+}
+#+END_SRC
 
+#+BEGIN_SRC json
+{
+	"status": "finished",
+	"success": bool
+	"message": string		// message
+}
+#+END_SRC
+
+*** remove
+Remove an item from the user.
+#+BEGIN_SRC json
+{
+  "action": "remove",
+  "items": [
+  	{
+		"reference": string,	//optional, the reference from which to install the item
+		"item-name": string	// the name of the item to be installed
+	},
+	...
+  ]
+}
+#+END_SRC
+the response looks like this
+#+BEGIN_SRC json
+{
+  "success": bool,
+  "item": [
+  	{
+		"item": {
+			"reference": string,
+			"item-name": string
+
+		},
+		"success": bool,
+		"message": string,
+		"item-removed": bool, // the item is only removed if all users have deleted it or if the root user deletes it and no package depend on it
+		"storage-restored": integer // the storage restored in bytes
+	},
+	...
+  ]
+}
+#+END_SRC
+
+*** query
+DESIGN IN  PROGRESS
+
+*** upgrade
+Upgrade one or all packages
+#+BEGIN_SRC json
+{
+  "action": "upgrade",
+  "all-items": boolean
+  "items": [
+  	{
+		"reference": string,	//optional, the reference from which to install the item
+		"item-name": string	// the name of the item to be installed
+	},
+	...
+  ]
+}
+#+END_SRC
+
+Response with a stream of the progress for each item. The status is indicated with the status flag
+- downloading
+- download-failed
+- finished
+
+#+BEGIN_SRC json
+{
+	"status": "downloading",
+	"reference": string,	// the reference the data is about
+	"progress": integer,	// the number of bytes downloaded
+	"size": integer		// the total size of the update in bytes 
+}
+#+END_SRC
+
+#+BEGIN_SRC json
+{
+	"status": "downloading",
+	"upgrade": boolean, 	// if the item needs upgrading
+	"item": {
+		"reference": string,
+		"item-name": string
+	},
+	"progress": integer,	// the number of bytes downloaded
+	"size": integer		// the total size of the update in bytes, is zero while unknown
+	"seeders": integer	// the number of seeders for the item
+}
+#+END_SRC
+
+#+BEGIN_SRC json
+{
+	"status": "finished",
+	"success": bool
+	"message": string	// message
+}
+#+END_SRC
+
+*** reload
+Reload reloads timd to the configuration. 
+#+BEGIN_SRC json
+{
+	"action": "reload"
+}
+#+END_SRC
+
+The response is
+
+#+BEGIN_SRC json
+{
+	"success": boolean,
+	"message": string
+}
+#+END_SRC
+
+** Configuration
+The main configuration of timd is done at
+#+BEGIN_SRC
+/etc/timd.conf
+#+END_SRC
+The configuration is written in [[https://toml.io/][toml]]. These are the available field in correct syntax:
+#+BEGIN_SRC toml
+[options]
+
+
+[[references]]		# list of all references, can be repeated
+name = "refrence-name"	# /required/ the name of the reference. Used in user land and backend to refere to the reference
+src = "https://tim.example.net" # /required/ the refrences url
+link-to = [ "", ]	# /required/, an array of paths to which to symbolic link the item
+script-path = ""	# /default: none/, an script to run after each package frome this reference have been run
+allow-install-script = false	# /default: false/, allow the item to run its own install script on installation. *DO NOT ENABLE ON AN UNTRUSTED REFERENCE*
+allow-executable = false	# /default: false/, allow the item to include executable files
+
+pgp-key = ""		# /default: none/ pgp key used to verify the signature of the reference
+require-pgp = true	# /default: true/ require pgp key to verify the signature.
+require-tls = true 	# /default: true/, require https instead of http in the src. If false, timd will not check tls
+proxy = ""		# /default: none/, a http proxy address, no proxy is applied if none is mentioned
+
+#+END_SRC
+
+** The reference format
+The references host a file over http that can be downloaded. The file is in a json format like this
+#+BEGIN_SRC json
+TODO
+#+END_SRC
 
 
 * timos
 
-* Configuration
 
 ** References
