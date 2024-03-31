@@ -99,6 +99,35 @@ The sources directory contains a directory for each source. The directory name i
 #+END_SRC
 where iteration is the iteration of the source. This directory contains a config file describing how items from this source should be managed, and a folder instances containing symbolic links to the store-items derived from this source.
 
+** Inter-process communication (IPC)
+Communication with the timd daemon is done through a UNIX domain socket located at
+#+BEGIN_SRC
+/var/tim/timd.sock
+#+END_SRC
+
+Timd expects a JSON formatted string containing the fields "action" and the fields specific to the action. Timd will always respond with at least two fields:
+- success (boolean) if the action was successfully executed
+- message (string) a human readable message that can be printed out to the end user
+
+*** Example usage
+message:
+#+BEGIN_SRC json
+{
+  action: "install",
+  install-package: "neofetch"
+}
+#+END_SRC
+
+response:
+#+BEGIN_SRC json
+{
+  success: true,
+  message: "Torrenting of package neofetch has begun."
+}
+#+END_SRC
+
+
+
 
 * timos
 
